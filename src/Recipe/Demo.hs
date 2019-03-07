@@ -10,10 +10,17 @@ milk = ingredient "milk"
 
 cupOfTea :: Recipe
 cupOfTea = mkRecipe
-    $ optional "milk"
     $ mix milk
     $ discardFirst
     $ separate "teabag" "tea"
     $ forTime 300 $ wait
     $ mix teabag
     $ toTemp 100 (heat water)
+
+cupOfTea' :: Recipe
+cupOfTea' = mkRecipe
+    $ mix (discardFirst
+            $ separate "teabag" "tea"
+            $ forTime 300 $ wait
+            $ mix teabag
+            $ toTemp 100 (heat water)) milk

@@ -8,6 +8,9 @@ import Control.Monad.State.Lazy
 newtype Recipe = R (Graph (Int, Action))
     deriving Show
 
+instance Eq Recipe where
+    (R r) == (R r') = fmap snd r == fmap snd r'
+
 type Recipe' = (Recipe, (Int, Action))
 
 type STRecipe = State Int Recipe'
@@ -20,14 +23,14 @@ data Action = GetIngredient String
     | Conditional Condition Action 
     | Transaction Action
     | Measure Measurement
-    | Optional String Action
+    -- | Optional String Action
     | Using [String] Action
     | Separate String
     deriving (Show, Eq, Ord)
 
 -- |'Temp' is a wrapper around an Int representing degrees centigrade.
 newtype Temp = Temp Int
-    deriving (Eq, Ord, Num, Real, Enum, Integral)
+    deriving (Show, Eq, Ord, Num, Real, Enum, Integral)
 
 instance Semigroup Temp where
     (<>) = (+)
@@ -142,8 +145,8 @@ transaction = wrapHelper Transaction
 measure :: Measurement -> STRecipe -> STRecipe
 measure m = insertHelper (Measure m)
 
-optional :: String -> STRecipe -> STRecipe
-optional lbl = wrapHelper (Optional lbl)
+-- optional :: String -> STRecipe -> STRecipe
+-- optional lbl = wrapHelper (Optional lbl)
 
 using :: [String] -> STRecipe -> STRecipe
 using sts = wrapHelper (Using sts)
@@ -164,7 +167,7 @@ with sr1 sr2 = do
 forTime :: Time -> STRecipe -> STRecipe
 forTime time = conditional (CondTime time)
 
-toTemp :: Int -> STRecipe -> STRecipe
+toTemp :: Temp -> STRecipe -> STRecipe
 toTemp temp = conditional (CondTemp temp)
 
 discardFirst :: State Int (Recipe', Recipe') -> STRecipe
