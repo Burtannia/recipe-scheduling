@@ -10,6 +10,7 @@ newtype Recipe = R (Graph (Int, Action))
 
 instance Eq Recipe where
     (R r) == (R r') = fmap snd r == fmap snd r'
+    -- more efficient way to do this via specified equality test?
 
 type Recipe' = (Recipe, (Int, Action))
 
@@ -17,7 +18,7 @@ type STRecipe = State Int Recipe'
 
 data Action = GetIngredient String
     | Heat
-    | HeatAt Int
+    | HeatAt Temp
     | Wait
     | Mix
     | Conditional Condition Action 
@@ -120,7 +121,7 @@ ingredient name = do
 heat :: STRecipe -> STRecipe
 heat = insertHelper Heat
 
-heatAt :: Int -> STRecipe -> STRecipe
+heatAt :: Temp -> STRecipe -> STRecipe
 heatAt temp = insertHelper (HeatAt temp)
 
 wait :: STRecipe -> STRecipe
@@ -141,6 +142,7 @@ conditional c = wrapHelper (Conditional c)
 
 transaction :: STRecipe -> STRecipe
 transaction = wrapHelper Transaction
+-- might need to think about how transactions propogate down branches
 
 measure :: Measurement -> STRecipe -> STRecipe
 measure m = insertHelper (Measure m)
@@ -181,3 +183,10 @@ ppList [] = return ()
 ppList (x:xs) = do
     print x
     ppList xs
+
+liftR :: (Graph (Int, Action) -> Graph (Int, Action)) -> Recipe -> Recipe
+liftR f (R r) = R (f r)
+
+liftR2 :: (Graph (Int, Action) -> Graph (Int, Action)
+    -> Graph (Int, Action)) -> Recipe -> Recipe -> Recipe
+liftR2 f (R r1) (R r2) = R (f r1 r2)
