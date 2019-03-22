@@ -23,6 +23,8 @@ dependencies:
 - base >= 4.7 && < 5
 - algebraic-graphs
 - mtl
+- graphviz
+- text
 
 library:
   source-dirs: src

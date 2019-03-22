@@ -5,14 +5,16 @@ module Recipe.Recipe where
 import Algebra.Graph
 import Control.Monad.State.Lazy
 
-newtype Recipe = R (Graph (Int, Action))
+type IxAction = (Int, Action)
+
+newtype Recipe = R (Graph IxAction)
     deriving Show
 
 instance Eq Recipe where
     (R r) == (R r') = fmap snd r == fmap snd r'
     -- more efficient way to do this via specified equality test?
 
-type Recipe' = (Recipe, (Int, Action))
+type Recipe' = (Recipe, IxAction)
 
 type STRecipe = State Int Recipe'
 
@@ -27,6 +29,7 @@ data Action = GetIngredient String
     -- | Optional String Action
     | Using [String] Action
     | Separate String
+    | With
     deriving (Show, Eq, Ord)
 
 -- |'Temp' is a wrapper around an Int representing degrees centigrade.
@@ -137,12 +140,21 @@ mix sr1 sr2 = do
         r = overlay r1 $ overlay r2 $ edges [(last1, v), (last2, v)]
     return $! (R r, v)
 
+with :: STRecipe -> STRecipe -> STRecipe
+with sr1 sr2 = do
+    (R r1, last1) <- sr1
+    (R r2, last2) <- sr2
+    i <- get
+    put (i + 1)
+    let v = (i, With)
+        r = overlay r1 $ overlay r2 $ edges [(last1, v), (last2, v)]
+    return $! (R r, v)
+
 conditional :: Condition -> STRecipe -> STRecipe
 conditional c = wrapHelper (Conditional c)
 
 transaction :: STRecipe -> STRecipe
 transaction = wrapHelper Transaction
--- might need to think about how transactions propogate down branches
 
 measure :: Measurement -> STRecipe -> STRecipe
 measure m = insertHelper (Measure m)
@@ -159,34 +171,35 @@ separate s1 s2 sr = do
     r2 <- insertHelper (Separate s2) sr
     return $! (r1, r2) 
 
-with :: STRecipe -> STRecipe -> STRecipe
-with sr1 sr2 = do
-    (R r1, last1) <- sr1
-    (R r2, last2) <- sr2
-    let r = overlay r1 r2
-    return $! (R r, last2)
-
 forTime :: Time -> STRecipe -> STRecipe
 forTime time = conditional (CondTime time)
 
 toTemp :: Temp -> STRecipe -> STRecipe
 toTemp temp = conditional (CondTemp temp)
 
+heatTo :: Temp -> STRecipe -> STRecipe
+heatTo temp = toTemp temp . heat
+
+heatFor :: Time -> STRecipe -> STRecipe
+heatFor time = forTime time . heat
+
+waitFor :: Time -> STRecipe -> STRecipe
+waitFor time = forTime time . wait
+
+minutes :: Int -> Time
+minutes n = Time $ n * 60
+
+grams :: Int -> STRecipe -> STRecipe
+grams n = measure (Grams n)
+
+ml :: Int -> STRecipe -> STRecipe
+ml n = measure (Milliletres n)
+
+count :: Int -> Measurement
+count = Count
+
 discardFirst :: State Int (Recipe', Recipe') -> STRecipe
 discardFirst = fmap snd
 
 discardSecond :: State Int (Recipe', Recipe') -> STRecipe
 discardSecond = fmap fst
-
-ppList :: Show a => [a] -> IO ()
-ppList [] = return ()
-ppList (x:xs) = do
-    print x
-    ppList xs
-
-liftR :: (Graph (Int, Action) -> Graph (Int, Action)) -> Recipe -> Recipe
-liftR f (R r) = R (f r)
-
-liftR2 :: (Graph (Int, Action) -> Graph (Int, Action)
-    -> Graph (Int, Action)) -> Recipe -> Recipe -> Recipe
-liftR2 f (R r1) (R r2) = R (f r1 r2)

@@ -1,0 +1,17 @@
+digraph {
+    "0: GetIngredient \"milk\"";
+    "7: GetIngredient \"teabag\"";
+    "8: GetIngredient \"water\"";
+    "9: Conditional (CondTemp (Temp 100)) Heat";
+    "10: Mix";
+    "11: Conditional (CondTime 0h 5m 0s) Wait";
+    "12: Separate \"tea\"";
+    "13: Mix";
+    "9: Conditional (CondTemp (Temp 100)) Heat" -> "8: GetIngredient \"water\"";
+    "10: Mix" -> "7: GetIngredient \"teabag\"";
+    "10: Mix" -> "9: Conditional (CondTemp (Temp 100)) Heat";
+    "11: Conditional (CondTime 0h 5m 0s) Wait" -> "10: Mix";
+    "12: Separate \"tea\"" -> "11: Conditional (CondTime 0h 5m 0s) Wait";
+    "13: Mix" -> "0: GetIngredient \"milk\"";
+    "13: Mix" -> "12: Separate \"tea\"";
+}
