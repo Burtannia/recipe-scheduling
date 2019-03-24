@@ -12,7 +12,6 @@ newtype Recipe = R (Graph IxAction)
 
 instance Eq Recipe where
     (R r) == (R r') = fmap snd r == fmap snd r'
-    -- more efficient way to do this via specified equality test?
 
 type Recipe' = (Recipe, IxAction)
 

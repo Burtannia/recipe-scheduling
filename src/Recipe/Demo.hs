@@ -80,3 +80,48 @@ jalfreziWithRice = mkRecipe
     $ transaction
     $ with boiledRice
     $ mix spicedChicken jalfreziSauce
+
+testEnv :: Env
+testEnv = Env [kettle, chef, worktop, hob]
+
+kettle :: Station
+kettle = Station "kettle" f 1
+    where
+        f (Conditional (CondTemp 100) Heat) [GetIngredient "water"] = Just 120
+        f (Transaction a) ds = f a ds
+        f (Using xs a) ds = if "kettle" `elem` xs then f a ds else Nothing
+        f _ _ = Nothing
+
+chef :: Station
+chef = Station "chef" f 1
+    where
+        f a ds = case a of
+            GetIngredient _ -> Just 10
+            Mix -> Just 7
+            Transaction a -> f a ds
+            Separate _ -> Just 5
+            With -> Just 5
+            Measure _ -> Just 20
+            Using xs a -> if "chef" `elem` xs then f a ds else Nothing
+            _ -> Nothing
+
+worktop :: Station
+worktop = Station "worktop" f 1
+    where
+        f a ds = case a of
+            Wait -> Just 0
+            Conditional (CondTime t) a -> f a ds >>= const (Just t)
+            Transaction a -> f a ds
+            Using xs a -> if "worktop" `elem` xs then f a ds else Nothing
+            _ -> Nothing
+
+hob :: Station
+hob = Station "hob" f 2
+    where
+        f a ds = case a of
+            Heat -> Just 0
+            Conditional (CondTime t) a -> f a ds >>= const (Just t)
+            Conditional (CondTemp t) a -> f a ds >>= return . (+) (fromIntegral t * 4)
+            Transaction a -> f a ds
+            Using xs a -> if "hob" `elem` xs then f a ds else Nothing
+            _ -> Nothing
