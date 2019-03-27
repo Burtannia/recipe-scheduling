@@ -5,7 +5,6 @@ import Recipe.Helper
 import Recipe.Kitchen
 import LP.Lang
 import Algebra.Graph
-import Data.List ((\\))
 import Data.Maybe (catMaybes)
 
 writeSchedule :: String -> Recipe -> Env -> IO ()
@@ -21,23 +20,20 @@ writeSchedule fName r e = do
     -- (1) Ei >= E_ij
     let c1 = [ [var1 "Emax"] `geq` [var1 $ "E_" ++ show i ++ '_' : j]
                 | a@(i, _) <- as, (j, _) <- validStations a r env]
-    
-    let czero = [ [var1 $ "E_" ++ show i ++ '_' : j] `leq` [var (bigM, "X_" ++ show i ++ '_' : j)]
-                | a@(i, _) <- as, (j, _) <- validStations a r env]
 
     -- (2) E_ij >= D_ij * X_ij
     let c2 = [ [var1 $ "E_" ++ show i ++ '_' : j] `geq` [var (fromIntegral dij, "X_" ++ show i ++ '_' : j)]
                 | a@(i, _) <- as, (j, dij) <- validStations a r env]
 
     -- (3) E_ij >= E_kl + (D_ij * X_ij)
-    let c3 = [  [ var1 $ "E_" ++ show i ++ '_' : j ]
-                `geq`
-                [ var1 $ "E_" ++ show k ++ '_' : l
-                , var (fromIntegral dij, "X_" ++ show i ++ '_' : j) ]
-                | ai@(i, _) <- as
-                , ak@(k, _) <- deps ai r
-                , (j, dij) <- validStations ai r env
-                , (l, _) <- validStations ak r env ]
+    let c3 = [ [ var1 $ "E_" ++ show i ++ '_' : j ]
+               `geq`
+               [ var1 $ "E_" ++ show k ++ '_' : l
+               , var (fromIntegral dij, "X_" ++ show i ++ '_' : j) ]
+               | ai@(i, _) <- as
+               , ak@(k, _) <- deps ai r
+               , (j, dij) <- validStations ai r env
+               , (l, _) <- validStations ak r env ]
 
     -- (4) SUM X_ij = 1
     let c4 = [ [var1 $ "X_" ++ show i ++ '_' : j | (j, _) <- validStations a r env]
@@ -47,27 +43,29 @@ writeSchedule fName r e = do
         ds = map (\n -> var1 $ "dummy_" ++ show n) $ catMaybes $ map snd c4'
         dConstraint = C Eql ds [constant 0]
 
-    -- (5) E_ij - E_kj >= D_ij - (M * Y_ijk)
+    -- (5) E_ij - E_kj >= (D_ij * X_ij) - (M * Y_ijk)
     let c5 = [ [ var1 $ "E_" ++ show i ++ '_' : j
                , varNeg1 $ "E_" ++ show k ++ '_' : j ]
                `geq`
-               [ constant $ fromIntegral dij -- maybe add multiplier with X or Y here
-               , var (negate bigM, "Y_" ++ show i ++ ('_' : j) ++ ('_' : show k)) ]
+               [ var (fromIntegral dij, "X_" ++ show i ++ '_' : j)
+               , var (negate bigM, "Y_" ++ show i ++ ('_' : show k)) ]-- ++ ('_' : j) ++ ('_' : show k)) ]
                | ai@(i, _) <- as
-               , ak@(k, _) <- as \\ [ai]
+               , ak@(k, _) <- as
+               , not $ ai == ak
                , (j, dij, _) <- intersectStations (validStations ai r env)
                                                   (validStations ak r env)
                                                   ]
 
-    -- (6) E_ij - E_kj >= D_ij - (M * Y_ijk)
+    -- (6) E_kj - E_ij >= (D_kj * X_kj) - (M * (1 - Y_ijk))
     let c6 = [ [ var1 $ "E_" ++ show k ++ '_' : j
                , varNeg1 $ "E_" ++ show i ++ '_' : j ]
                `geq`
-               [ constant $ fromIntegral dkj -- maybe add multiplier with X or Y here
+               [ var (fromIntegral dkj, "X_" ++ show i ++ '_' : j)
                , constant $ negate bigM
-               , var (bigM, "Y_" ++ show i ++ ('_' : j) ++ ('_' : show k)) ]
+               , var (bigM, "Y_" ++ show i ++ ('_' : show k)) ] -- ('_' : j) ++ ('_' : show k)) ]
                | ai@(i, _) <- as
-               , ak@(k, _) <- as \\ [ai]
+               , ak@(k, _) <- as
+               , not $ ai == ak
                , (j, _, dkj) <- intersectStations (validStations ai r env)
                                                   (validStations ak r env)
                                                   ]
@@ -80,14 +78,15 @@ writeSchedule fName r e = do
 
     -- (8) bin Y_ijk
     let c8 = BinC
-            [ (1, "Y_" ++ show i ++ ('_' : j) ++ ('_' : show k))
+            [ (1, "Y_" ++ show i ++ ('_' : show k)) --('_' : j) ++ ('_' : show k))
                 | ai@(i, _) <- as
                 , ak@(k, _) <- as
+                , not $ ai == ak
                 , (j, _, dkj) <- intersectStations (validStations ai r env)
                                                    (validStations ak r env)
                                                    ]
 
-    let constraints = czero ++ c1 ++ c2 ++ c3 ++ c4'' ++ (dConstraint : c5) ++ c6 ++ [c7] ++ [c8]
+    let constraints = c1 ++ c2 ++ c3 ++ c4'' ++ (dConstraint : c5) ++ c6 ++ [c7] ++ [c8]
         model = Model objf constraints
 
     -- currently ignoring transactions
