@@ -28,6 +28,12 @@ validStations a r (Env sts) = catMaybes $
         fmap (\time -> (stName, time)) $
             stFunc (snd a) (map snd $ deps a r)
 
+validStations' :: IxAction -> Recipe -> Env -> [(Station, Time)]
+validStations' a r (Env sts) = catMaybes $
+    flip map sts $ \st@Station {..} ->
+        fmap (\time -> (st, time)) $
+            stFunc (snd a) (map snd $ deps a r)
+
 isValidSt :: Action -> [Action] -> Station -> Bool
 isValidSt a ds Station {..} = isJust $ stFunc a ds
 
@@ -48,3 +54,14 @@ intersectStations xs ys = aux (sort' xs) (sort' ys)
             | n == n' = (n, t, t') : aux xs ys
             | n > n' = aux (x:xs) ys
             
+infeasible :: Recipe -> Env -> Maybe [IxAction]
+infeasible r env = foldr aux Nothing as
+    where
+        as = liftR vertexList r
+        aux a mx = joinRes mx (hasStations a)
+        hasStations a = case validStations a r env of
+            [] -> Just [a]
+            _  -> Nothing
+        joinRes mx Nothing = mx
+        joinRes Nothing my = my
+        joinRes (Just xs) (Just ys) = Just $ xs ++ ys

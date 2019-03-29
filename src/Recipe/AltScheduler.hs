@@ -98,15 +98,15 @@ writeSchedule' fName r e = do
                                                     , not $ ai == ak ]
 
     -- (9) bin O_ik
-    let c9 = BinC
-            [ (1, "O_" ++ show i ++ ('_' : show k)) | ai@(i, _) <- as
-                                                    , ak@(k, _) <- as
-                                                    , not $ ai == ak
-                                                    , not $ intersectStations
-                                                        (validStations ai r env)
-                                                        (validStations ak r env) == [] ]
+    -- let c9 = BinC
+    --         [ (1, "O_" ++ show i ++ ('_' : show k)) | ai@(i, _) <- as
+    --                                                 , ak@(k, _) <- as
+    --                                                 , not $ ai == ak
+    --                                                 , not $ intersectStations
+    --                                                     (validStations ai r env)
+    --                                                     (validStations ak r env) == [] ]
 
-    let constraints = c1 ++ c2 ++ c3 ++ c4'' ++ (dConstraint : cOverlap) ++ c5 ++ c6 ++ [c7] ++ [c8] ++ [c9]
+    let constraints = c1 ++ c2 ++ c3 ++ c4'' ++ (dConstraint : cOverlap) ++ c5 ++ c6 ++ [c7] ++ [c8] -- ++ [c9]
         model = Model objf constraints
 
     -- currently ignoring transactions
