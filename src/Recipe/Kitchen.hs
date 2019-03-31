@@ -6,7 +6,8 @@ import Recipe.Recipe
 import Recipe.Helper
 import Algebra.Graph
 import Data.Maybe (isJust, catMaybes)
-import Data.List (sortBy)
+import Data.List (sortBy, maximumBy)
+import Data.Ord (comparing)
 
 data Station = Station
     { stName :: String -- should be unique
@@ -46,7 +47,7 @@ fromCapacity (Env sts) = Env $ flip concatMap sts $ \st@Station {..} ->
 intersectStations :: [(String, Time)] -> [(String, Time)] -> [(String, Time, Time)]
 intersectStations xs ys = aux (sort' xs) (sort' ys)
     where
-        sort' = sortBy (\a b -> compare (fst a) (fst b))
+        sort' = sortBy (comparing fst)
         aux [] _ = []
         aux _ [] = []
         aux (x@(n, t) : xs) (y@(n', t') : ys)
@@ -65,3 +66,21 @@ infeasible r env = foldr aux Nothing as
         joinRes mx Nothing = mx
         joinRes Nothing my = my
         joinRes (Just xs) (Just ys) = Just $ xs ++ ys
+
+maxEnd :: Recipe -> Env -> Time
+maxEnd r env = flip liftR r $
+    foldg 0 (\a -> snd $ maximumBy (comparing snd) $ validStations a r env) (+) (+)
+
+maxDur :: Recipe -> Env -> Time
+maxDur r env = flip liftR r $
+    foldg 0 (\a -> snd $ maximumBy (comparing snd) $ validStations a r env) max max
+
+preprocess :: String -> [IxAction] -> Recipe -> Env -> String
+preprocess model as r env =
+    let vs = [(a, head sts) | a <- as
+                       , let sts = validStations a r env
+                       , length sts == 1
+                       ]
+        vars = [ "X_" ++ show i ++ '_' : j | ((i, _), (j, _)) <- vs ]
+        model' = foldr (\var mdl -> replaceWith var "" mdl) model ("1.0 = 1.0;\n" : vars)
+     in replaceWith " ," " " $ replaceWith ",;" ";" $ replaceWith ",," "," model'

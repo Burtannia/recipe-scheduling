@@ -14,6 +14,7 @@ writeSchedule' fName r e = do
         objf = ObjF ObjMin [var1 "Emax"]
         as = liftR vertexList r
         ixs = map fst as
+        bigM = fromIntegral $ maxDur r env + maxEnd r env
 
     -- Constraints
 
@@ -52,7 +53,7 @@ writeSchedule' fName r e = do
                                                     (validStations ak r env)
                    ]
 
-    -- (5) E_i >= E_k + SUM (D_ij * X_ij) - M (1 - O_ik) - M * Y_ik
+    -- (5) E_i >= E_k + SUM (D_ij * X_ij) - M (1 - O_ik) - M Y_ik
     let c5 = [ [ var1 $ "E_" ++ show i ]
                `geq`
                 ( sumdx ai ++
@@ -68,7 +69,7 @@ writeSchedule' fName r e = do
                     (validStations ak r env) == [] 
                 ]
 
-    -- (6) E_k >= E_i + SUM (D_kj * X_kj) - M (1 - O_ik) - M (1 - Y_ijk)
+    -- (6) E_k >= E_i + SUM (D_kj * X_kj) - M (1 - O_ik) - M (1 - Y_ik)
     let c6 = [ [ var1 $ "E_" ++ show k ]
                 `geq`
                 ( sumdx ak ++
@@ -95,20 +96,26 @@ writeSchedule' fName r e = do
     let c8 = BinC
             [ (1, "Y_" ++ show i ++ ('_' : show k)) | ai@(i, _) <- as
                                                     , ak@(k, _) <- as
-                                                    , not $ ai == ak ]
+                                                    , not $ ai == ak
+                                                    , not $ intersectStations
+                                                        (validStations ai r env)
+                                                        (validStations ak r env) == [] ]
 
     -- (9) bin O_ik
-    -- let c9 = BinC
-    --         [ (1, "O_" ++ show i ++ ('_' : show k)) | ai@(i, _) <- as
-    --                                                 , ak@(k, _) <- as
-    --                                                 , not $ ai == ak
-    --                                                 , not $ intersectStations
-    --                                                     (validStations ai r env)
-    --                                                     (validStations ak r env) == [] ]
+    let c9 = BinC
+            [ (1, "O_" ++ show i ++ ('_' : show k)) | ai@(i, _) <- as
+                                                    , ak@(k, _) <- as
+                                                    , not $ ai == ak
+                                                    , not $ intersectStations
+                                                        (validStations ai r env)
+                                                        (validStations ak r env) == [] ]
 
-    let constraints = c1 ++ c2 ++ c3 ++ c4'' ++ (dConstraint : cOverlap) ++ c5 ++ c6 ++ [c7] ++ [c8] -- ++ [c9]
+    --let constraints = c1 ++ c2 ++ c3 ++ c4'' ++ (dConstraint : cOverlap) ++ c5 ++ c6 ++ [c7] ++ [c8] ++ [c9]
+    let constraints = c1 ++ c2 ++ c3 ++ c4 ++ cOverlap ++ c5 ++ c6 ++ [c7] ++ [c8] ++ [c9]
         model = Model objf constraints
 
     -- currently ignoring transactions
 
-    writeLP fPath model
+    -- writeLP fPath model
+    let fContents = preprocess (showModel model) as r env
+    writeFile fPath fContents

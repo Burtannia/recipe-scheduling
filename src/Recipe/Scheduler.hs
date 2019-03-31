@@ -14,6 +14,7 @@ writeSchedule fName r e = do
         objf = ObjF ObjMin [var1 "Emax"]
         as = liftR vertexList r
         ixs = map fst as
+        bigM = fromIntegral $ maxDur r env + maxEnd r env
 
     -- Constraints
 
@@ -86,9 +87,12 @@ writeSchedule fName r e = do
                                                    (validStations ak r env)
                                                    ]
 
-    let constraints = c1 ++ c2 ++ c3 ++ c4'' ++ (dConstraint : c5) ++ c6 ++ [c7] ++ [c8]
+    -- let constraints = c1 ++ c2 ++ c3 ++ c4'' ++ (dConstraint : c5) ++ c6 ++ [c7] ++ [c8]
+    let constraints = c1 ++ c2 ++ c3 ++ c4 ++ c5 ++ c6 ++ [c7] ++ [c8]
         model = Model objf constraints
 
     -- currently ignoring transactions
 
-    writeLP fPath model
+    --writeLP fPath model
+    let fContents = preprocess (showModel model) as r env
+    writeFile fPath fContents

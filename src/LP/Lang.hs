@@ -75,11 +75,15 @@ leq ls rs = C Leq ls rs
 eql :: [Exp] -> [Exp] -> Constraint
 eql ls rs = C Eql ls rs
 
-writeLP :: FilePath -> Model -> IO ()
-writeLP fPath Model {..} = do
-    let ls = show mObj : map show mConstrs
-        fContents = concat $ intersperse "\n" ls
-    writeFile fPath fContents
+showModel :: Model -> String
+showModel Model {..} = let ls = show mObj : map show mConstrs
+                        in concat $ intersperse "\n" ls
+
+-- writeLP :: FilePath -> Model -> IO ()
+-- writeLP fPath Model {..} = do
+--     let ls = show mObj : map show mConstrs
+--         fContents = concat $ intersperse "\n" ls
+--     writeFile fPath fContents
 
 var :: Var -> Exp
 var = EVar
@@ -95,9 +99,6 @@ constant = ELit
 
 constantNeg :: Float -> Exp
 constantNeg = constant . negate
-
-bigM :: Float
-bigM = 9999999
 
 -- test1 :: [Constraint]
 -- test1 =

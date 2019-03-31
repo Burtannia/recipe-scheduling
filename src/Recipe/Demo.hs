@@ -29,10 +29,10 @@ rice :: STRecipe
 rice = ingredient "rice"
 
 boiledRice :: STRecipe
-boiledRice = -- transaction
-    -- $ discardFirst
-    -- $ separate "water" "rice"
-    heatFor (minutes 10)
+boiledRice = transaction
+    $ discardFirst
+    $ separate "water" "rice"
+    $ heatFor (minutes 10)
     $ mix (grams 60 rice) (ml 220 water)
 
 tinnedTomatoes, redPepper, onion, garlic, oil :: STRecipe
@@ -102,8 +102,8 @@ chef = Station "chef" f 1
             GetIngredient _ -> Just 10
             Mix -> Just 7
             Transaction a -> f a ds
-            Separate _ -> Just 0 -- used to be 5
-            With -> Just 0 -- used to be 5
+            Separate _ -> Just 5
+            With -> Just 5
             Measure _ -> Just 20
             Using xs a -> if "chef" `elem` xs then f a ds else Nothing
             _ -> Nothing
@@ -124,7 +124,7 @@ hob = Station "hob" f 2
         f a ds = case a of
             Heat -> Just 0
             Conditional (CondTime t) a -> f a ds >>= const (Just t)
-            Conditional (CondTemp t) a -> f a ds >>= const (Just 120) -- return . (+) (fromIntegral t * 4)
+            Conditional (CondTemp t) a -> f a ds >>= return . (+) (fromIntegral t * 4)
             Transaction a -> f a ds
             Using xs a -> if "hob" `elem` xs then f a ds else Nothing
             _ -> Nothing

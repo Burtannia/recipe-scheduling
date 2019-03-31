@@ -27,3 +27,20 @@ deps a r = fromJust $
 
 reverseR :: Recipe -> Recipe
 reverseR = liftR' $ edges . map swap . edgeList
+
+replaceWith :: String -> String -> String -> String
+replaceWith "" _ s = s
+replaceWith _ _ "" = ""
+replaceWith toRep@(x:xs) repWith s@(y:ys)
+    | x == y =
+        if match
+            then replaceWith toRep repWith (repWith ++ rest)
+            else y : replaceWith toRep repWith ys
+    | otherwise = y : replaceWith toRep repWith ys
+    where
+        (match, rest) = isMatch xs ys
+        isMatch "" s' = (True, s')
+        isMatch _ "" = (False, "")
+        isMatch (c:cs) s'@(d:ds)
+            | c == d = isMatch cs ds
+            | otherwise = (False, "") -- snd not used
