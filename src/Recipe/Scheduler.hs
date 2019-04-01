@@ -93,6 +93,4 @@ writeSchedule fName r e = do
 
     -- currently ignoring transactions
 
-    --writeLP fPath model
-    let fContents = preprocess (showModel model) as r env
-    writeFile fPath fContents
+    writeLP fPath (preprocess model)

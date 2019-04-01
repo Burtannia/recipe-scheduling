@@ -75,12 +75,12 @@ maxDur :: Recipe -> Env -> Time
 maxDur r env = flip liftR r $
     foldg 0 (\a -> snd $ maximumBy (comparing snd) $ validStations a r env) max max
 
-preprocess :: String -> [IxAction] -> Recipe -> Env -> String
-preprocess model as r env =
-    let vs = [(a, head sts) | a <- as
-                       , let sts = validStations a r env
-                       , length sts == 1
-                       ]
-        vars = [ "X_" ++ show i ++ '_' : j | ((i, _), (j, _)) <- vs ]
-        model' = foldr (\var mdl -> replaceWith var "" mdl) model ("1.0 = 1.0;\n" : vars)
-     in replaceWith " ," " " $ replaceWith ",;" ";" $ replaceWith ",," "," model'
+-- preprocess :: String -> [IxAction] -> Recipe -> Env -> String
+-- preprocess model as r env =
+--     let vs = [(a, head sts) | a <- as
+--                        , let sts = validStations a r env
+--                        , length sts == 1
+--                        ]
+--         vars = [ "X_" ++ show i ++ '_' : j | ((i, _), (j, _)) <- vs ]
+--         model' = foldr (\var mdl -> replaceWith var "" mdl) model ("1.0 = 1.0;\n" : vars)
+--      in replaceWith " ," " " $ replaceWith ",;" ";" $ replaceWith ",," "," model'

@@ -7,7 +7,7 @@ import Data.List (intersperse)
 data Model = Model
     { mObj :: ObjF
     , mConstrs :: [Constraint]
-    }
+    } deriving Eq
 
 type VarName = String
 type Coeff = Float
@@ -15,12 +15,14 @@ type Var = (Coeff, VarName)
 
 data Exp = ELit Float
          | EVar Var
+         deriving Eq
 
 instance Show Exp where
     show (ELit f) = show f
     show (EVar (f, n)) = show f ++ n
 
 data CType = Eql | Geq | Leq
+    deriving Eq
 
 instance Show CType where
     show Eql = " = "
@@ -30,6 +32,7 @@ instance Show CType where
 data Constraint = C CType [Exp] [Exp]
                 | BinC [Var]
                 | IntC [Var]
+                deriving Eq
 
 instance Show Constraint where
     show (C t ls rs) = sumExps ls ++ show t ++ sumExps rs ++ ";"
@@ -39,13 +42,14 @@ instance Show Constraint where
 intBinHelper :: [Var] -> String
 intBinHelper vs = concat (intersperse "," $ map snd vs) ++ ";"
 
-data ObjDir = ObjMin | ObjMax
+data ObjDir = ObjMin | ObjMax deriving Eq
 
 instance Show ObjDir where
     show ObjMin = "min"
     show ObjMax = "max"
 
 data ObjF = ObjF ObjDir [Exp]
+    deriving Eq
 
 instance Show ObjF where
     show (ObjF dir vs) = show dir ++ ": " ++ sumExps vs ++ ";"
@@ -79,11 +83,50 @@ showModel :: Model -> String
 showModel Model {..} = let ls = show mObj : map show mConstrs
                         in concat $ intersperse "\n" ls
 
--- writeLP :: FilePath -> Model -> IO ()
--- writeLP fPath Model {..} = do
---     let ls = show mObj : map show mConstrs
---         fContents = concat $ intersperse "\n" ls
---     writeFile fPath fContents
+preprocess :: Model -> Model
+preprocess m = let m' = preprocess' m
+                in if m == m' then m' else preprocess m'
+
+preprocess' :: Model -> Model
+preprocess' Model {..} = Model mObj mConstrs'
+    where
+        mConstrs' = remVars vs cs
+        (cs, vs) = fixConstrs mConstrs
+
+remVars :: [VarName] -> [Constraint] -> [Constraint]
+remVars _ [] = []
+remVars vs (C t ls rs : cs) = C t (remVars' ls) (remVars' rs) : remVars vs cs
+    where
+        remVars' xs = [ case x of
+                            EVar (f, n) ->
+                                if n `elem` vs
+                                    then ELit f
+                                    else x
+                            _ -> x
+                        | x <- xs ]
+remVars vs (c:cs) = case c of
+    BinC xs -> let xs' = filterVars xs
+                in if xs' == [] then cs' else BinC xs' : cs'
+    IntC xs -> let xs' = filterVars xs
+                in if xs' == [] then cs' else IntC xs' : cs'
+    where
+        cs' = remVars vs cs
+        filterVars xs = filter (\x -> not $ snd x `elem` vs) xs
+                    
+fixConstrs :: [Constraint] -> ([Constraint], [VarName])
+fixConstrs cs = go cs []
+    where
+        go [] vs = ([], vs)
+        go (C Eql [EVar (f, n)] [ELit 1] : cs) vs = go cs (n : vs)
+        go (C Geq [EVar (1, n), ELit 1] [ELit 1, ELit 1] : cs) vs = go cs (n : vs)
+        go (c:cs) vs = let (cs', vs') = go cs vs
+                        in (c:cs', vs')
+
+writeLP :: FilePath -> Model -> IO ()
+writeLP fPath Model {..} = do
+    let ls = show mObj : map show mConstrs
+        fContents = concat $ intersperse "\n" ls
+    writeFile fPath fContents
 
 var :: Var -> Exp
 var = EVar
@@ -99,32 +142,3 @@ constant = ELit
 
 constantNeg :: Float -> Exp
 constantNeg = constant . negate
-
--- test1 :: [Constraint]
--- test1 =
---     [ [var (1, "Xs1s2")] `leq` [constant 10]
---     , [var (1, "Xad2")] `leq` [constant 80]
---     ]
-
--- test2 :: [Constraint]
--- test2 =
---     [ [var (1, "Xs1d2"), var (1, "Xs1a"), var (1, "Xs1s2")] `eql` [constant 50]
---     , [var1 "Xs2a", var (-1, "Xs1s2")] `eql` [constant 40]
---     , [var1 "Xad2", var (-1, "Xs1a"), var (-1, "Xs2a")] `eql` [constant 0]
---     , [var1 "Xd1d2", varNeg1 "Xs1d1", varNeg1 "Xd2d1"] `eql` [constantNeg 30]
---     , [var1 "Xd2d1", varNeg1 "Xad2", varNeg1 "Xd1d2"] `eql` [constantNeg 60]
---     ]
-
--- testObj :: ObjF
--- testObj = ObjF ObjMin
---     [ var (9, "Xs1d1")
---     , var (4, "Xs1a")
---     , var (2, "Xs1s2")
---     , var (3, "Xs2a")
---     , var (1, "Xad2")
---     , var (3, "Xd1d2")
---     , var (2, "Xd2d1")
---     ]
-
--- testModel :: Model
--- testModel = Model testObj (test1 ++ test2)
