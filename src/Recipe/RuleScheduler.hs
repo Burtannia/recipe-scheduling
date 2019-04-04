@@ -10,7 +10,7 @@ import Data.List ((\\), sortBy, minimumBy, maximumBy)
 
 type ActionRule = [IxAction] -> Recipe -> Env -> IxAction
 
-type StationRule = [(Station, Time)] -> IxAction -> Recipe -> Schedule -> (Station, Time)
+type StationRule = [(String, Time)] -> IxAction -> Recipe -> Schedule -> (String, Time)
 
 type Schedule = [(String, [Task])]
 
@@ -18,15 +18,36 @@ data Task = Idle Float
           | Active IxAction Float
           deriving Show
 
+shortestFirst :: ActionRule
+shortestFirst = durationRule minimumBy
+
 longestFirst :: ActionRule
-longestFirst as r env = fst $
-    maximumBy (\(_, t) (_, t') -> compare t t') as'
+longestFirst = durationRule maximumBy
+    
+durationRule :: (((IxAction, Time) -> (IxAction, Time) -> Ordering)
+    -> [(IxAction, Time)] -> (IxAction, Time)) -> ActionRule
+durationRule f as r env = fst $
+    f (\(_, t) (_, t') -> compare t t') as'
     where
         as' = map (\a -> (a, averageTime $ validStations a r env)) as
         averageTime xs = (foldr (\(_, t) n -> n + t) 0 xs) `div` (fromIntegral $ length xs)
 
-leastTimeReq :: StationRule
-leastTimeReq sts _ _ _ = minimumBy (\(_, t) (_, t') -> compare t t') sts
+leastFlexible :: ActionRule
+leastFlexible as r env = fst $
+    minimumBy (\(_, n) (_, m) -> compare n m) as'
+    where
+        as' = map (\a -> (a, length $ validStations a r env)) as
+
+fastestFirst :: StationRule
+fastestFirst sts _ _ _ = minimumBy (\(_, t) (_, t') -> compare t t') sts
+
+leastIdleReq :: StationRule
+leastIdleReq sts a r sch = minimumBy (\(st, _) (st', _) ->
+    compare (calcIdle a st sch r) (calcIdle a st' sch r)) sts
+
+leastUsed :: StationRule
+leastUsed sts _ _ sch = minimumBy (\(st, _) (st', _) ->
+    compare (stationDuration st sch) (stationDuration st' sch)) sts
 
 mkEmptySch :: Env -> Schedule
 mkEmptySch (Env sts) = [(stName, []) | Station {..} <- sts]
@@ -38,14 +59,14 @@ ruleSchedule aRule sRule fullR env = ruleSchedule' fullR (mkEmptySch env)
         ruleSchedule' (R Empty) sch = sch
         ruleSchedule' r sch = ruleSchedule' (liftR' (removeVertex a) r) sch'
             where
-                idleReq = calcIdle a stName sch fullR
+                idleReq = calcIdle a st sch fullR
                 as = filter (\(n, _) -> n == 0) $
                         map (\x -> (edgesTo x r, x)) (liftR vertexList r)
                 a = aRule (map snd as) fullR env
-                (Station {..}, dur) = sRule (validStations' a fullR env) a fullR sch
+                (st, dur) = sRule (validStations a fullR env) a fullR sch
                 task = Active a (fromIntegral dur)
                 ts = if idleReq > 0 then [Idle idleReq, task] else [task]
-                sch' = addTasks ts stName sch
+                sch' = addTasks ts st sch
 
 edgesTo :: IxAction -> Recipe -> Int
 edgesTo a (R g) = foldr (\(_, a') n ->
