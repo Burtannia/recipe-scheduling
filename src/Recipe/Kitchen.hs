@@ -68,9 +68,16 @@ infeasible r env = foldr aux Nothing as
         joinRes (Just xs) (Just ys) = Just $ xs ++ ys
 
 maxEnd :: Recipe -> Env -> Time
-maxEnd r env = flip liftR r $
-    foldg 0 (\a -> snd $ maximumBy (comparing snd) $ validStations a r env) (+) (+)
+maxEnd r env = sum ts
+    where
+        as = liftR vertexList r
+        ts = map (\a ->
+            snd $ maximumBy (comparing snd) $ validStations a r env) as
+
 
 maxDur :: Recipe -> Env -> Time
-maxDur r env = flip liftR r $
-    foldg 0 (\a -> snd $ maximumBy (comparing snd) $ validStations a r env) max max
+maxDur r env = maximum ts
+    where
+        as = liftR vertexList r
+        ts = map (\a ->
+            snd $ maximumBy (comparing snd) $ validStations a r env) as 

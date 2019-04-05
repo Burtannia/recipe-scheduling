@@ -118,3 +118,9 @@ endOfTask a sch = foldr (\(st, ts) n -> max n $ sumTasks ts) 0 sch
         sumTasks (Active a' f : ts)
             | a == a' = f
             | otherwise = f + sumTasks ts
+
+scheduleLength :: Schedule -> Float
+scheduleLength = foldr (\(_, ts) n -> n `max` aux ts) 0
+    where
+        aux [] = 0
+        aux (t:ts) = getDur t + aux ts

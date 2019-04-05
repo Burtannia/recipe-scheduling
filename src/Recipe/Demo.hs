@@ -2,6 +2,9 @@ module Recipe.Demo where
 
 import Recipe.Recipe
 import Recipe.Kitchen
+import Recipe.RuleScheduler
+
+-- Cup of tea
 
 water, teabag, milk :: STRecipe
 water = ingredient "water"
@@ -25,6 +28,8 @@ cupOfTea' = mkRecipe
             $ mix teabag
             $ heatTo 100 water) milk
 
+-- Rice
+
 rice :: STRecipe
 rice = ingredient "rice"
 
@@ -34,6 +39,8 @@ boiledRice = transaction
     $ separate "water" "rice"
     $ heatFor (minutes 10)
     $ mix (grams 60 rice) (ml 220 water)
+
+-- Chicken Jalfrezi
 
 tinnedTomatoes, redPepper, onion, garlic, oil :: STRecipe
 tinnedTomatoes = ingredient "tinned tomatoes"
@@ -49,8 +56,8 @@ turmeric = ingredient "turmeric"
 paprika = ingredient "paprika"
 garamMasala = ingredient "garam masala"
 
-chicken :: STRecipe
-chicken = ingredient "chicken"
+dicedChicken :: STRecipe
+dicedChicken = ingredient "dicedChicken"
 
 spiceMix :: STRecipe
 spiceMix = mix cumin
@@ -63,7 +70,7 @@ marinate time r mar = waitFor time
 
 spicedChicken :: STRecipe
 spicedChicken = heatTo 75
-    $ marinate 10 chicken spiceMix
+    $ marinate 10 dicedChicken spiceMix
 
 jalfreziSauce :: STRecipe
 jalfreziSauce = heatFor (minutes 10)
@@ -84,8 +91,44 @@ jalfreziWithRice = mkRecipe
     $ heatFor (minutes 10)
     $ mix spicedChicken jalfreziSauce
 
+-- Roast Chicken
+
+wholeChicken, salt, pepper, flour, chickenStock :: STRecipe
+wholeChicken = ingredient "whole chicken"
+salt = ingredient "salt"
+pepper = ingredient "pepper"
+flour = ingredient "flour"
+chickenStock = ingredient "chicken stock"
+
+roastChicken :: STRecipe
+roastChicken = heatAtFor 160 (minutes 25)
+    $ heatAtFor 180 (minutes 60)
+    $ mix wholeChicken
+    $ mix salt pepper
+    
+makeGravy :: STRecipe -> STRecipe
+makeGravy juices = heatFor (minutes 10)
+    $ mix chickenStock
+    $ mix flour
+    $ heatFor (minutes 1) juices
+
+separateDoWith :: String -> String -> (STRecipe -> STRecipe)
+    -> (STRecipe -> STRecipe) -> STRecipe -> STRecipe
+separateDoWith s1 s2 r1 r2 r = do
+    (x1, x2) <- separate s1 s2 r
+    with (r1 $ return x1) (r2 $ return x2)
+
+doNothing :: STRecipe -> STRecipe
+doNothing = id
+
+chickenWithGravy :: Recipe
+chickenWithGravy = mkRecipe $
+    separateDoWith "chicken" "juices" doNothing makeGravy roastChicken
+
+-- Env
+
 testEnv :: Env
-testEnv = Env [kettle, chef, worktop, hob]
+testEnv = Env [kettle, chef, worktop, hob, oven]
 
 kettle :: Station
 kettle = Station "kettle" f 1
@@ -128,3 +171,45 @@ hob = Station "hob" f 2
             Transaction a -> f a ds
             Using xs a -> if "hob" `elem` xs then f a ds else Nothing
             _ -> Nothing
+
+oven :: Station
+oven = Station "oven" f 2
+    where
+        f a ds = case a of
+            Heat -> Just 0
+            HeatAt t -> if t <= 220 && t >= 160 then Just 0 else Nothing
+            Conditional (CondTime t) a -> f a ds >>= const (Just t)
+            Conditional (CondTemp t) a -> f a ds >>= return . (+) (fromIntegral t * 5)
+            Transaction a -> f a ds
+            Using xs a -> if "oven" `elem` xs then f a ds else Nothing
+            _ -> Nothing
+
+-- Scheduling
+
+aRules :: [(String, ActionRule)]
+aRules = [ ("Short", shortestFirst)
+         , ("Long", longestFirst)
+         , ("Flex", leastFlexible)
+         ]
+
+stRules :: [(String, StationRule)]
+stRules = [ ("Fast", fastestFirst)
+          , ("Idle", leastIdleReq)
+          , ("Used", leastUsed)
+          ]
+
+heuristics :: [(String, ActionRule, StationRule)]
+heuristics = [(an ++ sn, ar, sr) | (sn, sr) <- stRules, (an, ar) <- aRules]
+
+testRecipes :: [(String, Recipe)]
+testRecipes = [ ("Tea", cupOfTea)
+              , ("Jalfrezi", jalfreziWithRice)
+              , ("Gravy", chickenWithGravy)
+              ]
+
+testResults :: [(String, String, Float)]
+testResults = flip map tests $ 
+    \((rName, r), (hName, aRule, stRule)) ->
+        (rName, hName, scheduleLength $ ruleSchedule aRule stRule r testEnv)
+    where
+        tests = [(r, h) | r <- testRecipes, h <- heuristics]

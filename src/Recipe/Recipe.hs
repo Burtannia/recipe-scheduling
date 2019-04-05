@@ -166,9 +166,18 @@ using sts = wrapHelper (Using sts)
 
 separate :: String -> String -> STRecipe -> State Int (Recipe', Recipe')
 separate s1 s2 sr = do
-    r1 <- insertHelper (Separate s1) sr
-    r2 <- insertHelper (Separate s2) sr
-    return $! (r1, r2) 
+    (R r, last) <- sr
+    i <- get
+    let i' = i + 1
+    put (i + 2)
+
+    let v1 = (i, Separate s1)
+        v2 = (i', Separate s2)
+        r' = overlay r $ edges [(last, v1), (last, v2)]
+        r1 = (R r', v1)
+        r2 = (R r', v2)
+        
+    return $! (r1, r2)
 
 forTime :: Time -> STRecipe -> STRecipe
 forTime time = conditional (CondTime time)
@@ -181,6 +190,9 @@ heatTo temp = toTemp temp . heat
 
 heatFor :: Time -> STRecipe -> STRecipe
 heatFor time = forTime time . heat
+
+heatAtFor :: Temp -> Time -> STRecipe -> STRecipe
+heatAtFor temp time = forTime time . heatAt temp
 
 waitFor :: Time -> STRecipe -> STRecipe
 waitFor time = forTime time . wait

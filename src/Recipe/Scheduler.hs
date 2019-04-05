@@ -39,17 +39,13 @@ writeSchedule fName r e = do
     -- (4) SUM X_ij = 1
     let c4 = [ [var1 $ "X_" ++ show i ++ '_' : j | (j, _) <- validStations a r env]
                 `eql` [constant 1] | a@(i, _) <- as ]
-        c4' = map (\(c@(C t xs ys), n) -> if length xs == 1 then (C t ((var1 $ "dummy_" ++ show n) : xs) ys, Just n) else (c, Nothing)) (zip c4 [1..])
-        c4'' = map fst c4'
-        ds = map (\n -> var1 $ "dummy_" ++ show n) $ catMaybes $ map snd c4'
-        dConstraint = C Eql ds [constant 0]
 
     -- (5) E_ij - E_kj >= (D_ij * X_ij) - (M * Y_ijk)
     let c5 = [ [ var1 $ "E_" ++ show i ++ '_' : j
                , varNeg1 $ "E_" ++ show k ++ '_' : j ]
                `geq`
                [ var (fromIntegral dij, "X_" ++ show i ++ '_' : j)
-               , var (negate bigM, "Y_" ++ show i ++ ('_' : show k)) ]-- ++ ('_' : j) ++ ('_' : show k)) ]
+               , var (negate bigM, "Y_" ++ show i ++ ('_' : j) ++ ('_' : show k)) ]
                | ai@(i, _) <- as
                , ak@(k, _) <- as
                , not $ ai == ak
@@ -63,7 +59,7 @@ writeSchedule fName r e = do
                `geq`
                [ var (fromIntegral dkj, "X_" ++ show i ++ '_' : j)
                , constant $ negate bigM
-               , var (bigM, "Y_" ++ show i ++ ('_' : show k)) ] -- ('_' : j) ++ ('_' : show k)) ]
+               , var (bigM, "Y_" ++ show i ++ ('_' : j) ++ ('_' : show k)) ]
                | ai@(i, _) <- as
                , ak@(k, _) <- as
                , not $ ai == ak
@@ -79,7 +75,7 @@ writeSchedule fName r e = do
 
     -- (8) bin Y_ijk
     let c8 = BinC
-            [ (1, "Y_" ++ show i ++ ('_' : show k)) --('_' : j) ++ ('_' : show k))
+            [ (1, "Y_" ++ show i ++ ('_' : j) ++ ('_' : show k))
                 | ai@(i, _) <- as
                 , ak@(k, _) <- as
                 , not $ ai == ak
@@ -87,7 +83,6 @@ writeSchedule fName r e = do
                                                    (validStations ak r env)
                                                    ]
 
-    -- let constraints = c1 ++ c2 ++ c3 ++ c4'' ++ (dConstraint : c5) ++ c6 ++ [c7] ++ [c8]
     let constraints = c1 ++ c2 ++ c3 ++ c4 ++ c5 ++ c6 ++ [c7] ++ [c8]
         model = Model objf constraints
 

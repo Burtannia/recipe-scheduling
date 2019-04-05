@@ -36,10 +36,6 @@ writeSchedule' fName r e = do
     -- (4) SUM X_ij = 1
     let c4 = [ [var1 $ "X_" ++ show i ++ '_' : j | (j, _) <- validStations a r env]
                 `eql` [constant 1] | a@(i, _) <- as ]
-        c4' = map (\(c@(C t xs ys), n) -> if length xs == 1 then (C t ((var1 $ "dummy_" ++ show n) : xs) ys, Just n) else (c, Nothing)) (zip c4 [1..])
-        c4'' = map fst c4'
-        ds = map (\n -> var1 $ "dummy_" ++ show n) $ catMaybes $ map snd c4'
-        dConstraint = C Eql ds [constant 0]
 
     -- O_ik + 1 >= Xij + Xkj
     let cOverlap = [ [ var1 $ "O_" ++ show i ++ '_' : show k, constant 1 ]
@@ -110,7 +106,6 @@ writeSchedule' fName r e = do
                                                         (validStations ai r env)
                                                         (validStations ak r env) == [] ]
 
-    --let constraints = c1 ++ c2 ++ c3 ++ c4'' ++ (dConstraint : cOverlap) ++ c5 ++ c6 ++ [c7] ++ [c8] ++ [c9]
     let constraints = c1 ++ c2 ++ c3 ++ c4 ++ cOverlap ++ c5 ++ c6 ++ [c7] ++ [c8] ++ [c9]
         model = Model objf constraints
 
