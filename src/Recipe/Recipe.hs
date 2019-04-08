@@ -105,20 +105,20 @@ insertHelper a sr = do
     put (i + 1)
     let v = (i, a)
         r' = insertAfter v last r
-    return $! (R r', v)
+    return (R r', v)
 
 wrapHelper :: (Action -> Action) -> STRecipe -> STRecipe
 wrapHelper f sr = do
     (R r, last@(i,a)) <- sr
     let v = (i, f a)
-    return $! (R (replaceVertex last v r), v)
+    return (R (replaceVertex last v r), v)
 
 ingredient :: String -> STRecipe
 ingredient name = do
     i <- get
     put (i + 1)
     let v = (i, GetIngredient name)
-    return $! (R (vertex v), v)
+    return (R (vertex v), v)
 
 heat :: STRecipe -> STRecipe
 heat = insertHelper Heat
@@ -137,7 +137,7 @@ mix sr1 sr2 = do
     put (i + 1)
     let v = (i, Mix)
         r = overlay r1 $ overlay r2 $ edges [(last1, v), (last2, v)]
-    return $! (R r, v)
+    return (R r, v)
 
 with :: STRecipe -> STRecipe -> STRecipe
 with sr1 sr2 = do
@@ -147,7 +147,7 @@ with sr1 sr2 = do
     put (i + 1)
     let v = (i, With)
         r = overlay r1 $ overlay r2 $ edges [(last1, v), (last2, v)]
-    return $! (R r, v)
+    return (R r, v)
 
 conditional :: Condition -> STRecipe -> STRecipe
 conditional c = wrapHelper (Conditional c)
@@ -177,7 +177,7 @@ separate s1 s2 sr = do
         r1 = (R r', v1)
         r2 = (R r', v2)
         
-    return $! (r1, r2)
+    return (r1, r2)
 
 forTime :: Time -> STRecipe -> STRecipe
 forTime time = conditional (CondTime time)

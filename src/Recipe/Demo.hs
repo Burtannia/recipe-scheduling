@@ -3,6 +3,7 @@ module Recipe.Demo where
 import Recipe.Recipe
 import Recipe.Kitchen
 import Recipe.RuleScheduler
+import Data.List (groupBy, sortBy)
 
 -- Cup of tea
 
@@ -16,6 +17,13 @@ cupOfTea = mkRecipe
     $ mix milk
     $ discardFirst
     $ separate "teabag" "tea"
+    $ waitFor (minutes 5)
+    $ mix teabag
+    $ heatTo 100 water
+
+cupOfTeaOld :: Recipe
+cupOfTeaOld = mkRecipe
+    $ mix milk
     $ waitFor (minutes 5)
     $ mix teabag
     $ heatTo 100 water
@@ -56,8 +64,8 @@ turmeric = ingredient "turmeric"
 paprika = ingredient "paprika"
 garamMasala = ingredient "garam masala"
 
-dicedChicken :: STRecipe
-dicedChicken = ingredient "dicedChicken"
+chicken :: STRecipe
+chicken = ingredient "chicken"
 
 spiceMix :: STRecipe
 spiceMix = mix cumin
@@ -70,7 +78,7 @@ marinate time r mar = waitFor time
 
 spicedChicken :: STRecipe
 spicedChicken = heatTo 75
-    $ marinate 10 dicedChicken spiceMix
+    $ marinate 10 chicken spiceMix
 
 jalfreziSauce :: STRecipe
 jalfreziSauce = heatFor (minutes 10)
@@ -213,3 +221,12 @@ testResults = flip map tests $
         (rName, hName, scheduleLength $ ruleSchedule aRule stRule r testEnv)
     where
         tests = [(r, h) | r <- testRecipes, h <- heuristics]
+    
+milpres :: Float
+milpres = sum [449, 2413, 5828]
+
+rs = map (\(h, x) -> (h, (x - milpres) / 3)) $
+    flip map rs' $
+        foldr (\(_, h, t) (_, n) -> (h, n + t)) ("", 0)
+rs' = groupBy (\(_,x,_) (_,x',_) -> x == x')
+        $ sortBy (\(_,x,_) (_,x',_) -> compare x x') testResults
