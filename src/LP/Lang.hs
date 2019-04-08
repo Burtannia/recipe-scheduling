@@ -14,8 +14,8 @@ type Coeff = Float
 type Var = (Coeff, VarName)
 
 data Term = TLit Float
-         | TVar Var
-         deriving Eq
+          | TVar Var
+          deriving Eq
 
 instance Show Term where
     show (TLit f) = show f
