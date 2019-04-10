@@ -2,7 +2,7 @@ module Recipe.Demo where
 
 import Recipe.Recipe
 import Recipe.Kitchen
-import Recipe.RuleScheduler
+import Recipe.Scheduler.Heuristic
 import Data.List (groupBy, sortBy)
 
 -- Cup of tea

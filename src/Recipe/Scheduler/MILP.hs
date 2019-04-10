@@ -1,9 +1,9 @@
-module Recipe.Scheduler where
+module Recipe.Scheduler.MILP where
 
 import Recipe.Recipe
 import Recipe.Helper
 import Recipe.Kitchen
-import LP.Lang
+import MILP.Core
 import Algebra.Graph
 import Data.Maybe (catMaybes)
 

@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module LP.Lang where
+module MILP.Core where
 
 import Data.List (intersperse)
 

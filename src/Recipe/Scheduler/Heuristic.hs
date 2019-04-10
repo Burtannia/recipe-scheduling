@@ -1,6 +1,6 @@
 {-# LANGUAGE RecordWildCards #-}
 
-module Recipe.RuleScheduler where
+module Recipe.Scheduler.Heuristic where
 
 import Recipe.Recipe
 import Recipe.Helper

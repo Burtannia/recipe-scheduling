@@ -1,14 +1,14 @@
-module Recipe.AltScheduler where
+module Recipe.Scheduler.MILP2 where
 
 import Recipe.Recipe
 import Recipe.Helper
 import Recipe.Kitchen
-import LP.Lang
+import MILP.Core
 import Algebra.Graph
 import Data.Maybe (catMaybes)
 
-writeSchedule' :: String -> Recipe -> Env -> IO ()
-writeSchedule' fName r e = do
+writeSchedule :: String -> Recipe -> Env -> IO ()
+writeSchedule fName r e = do
     let fPath = fName ++ ".lp"
         env@(Env sts) = fromCapacity e
         objf = ObjF ObjMin [var1 "Emax"]
@@ -20,20 +20,20 @@ writeSchedule' fName r e = do
 
     let sumdx = \a@(i,_) -> [ var (fromIntegral dij, "X_" ++ show i ++ '_' : j) | (j, dij) <- validStations a r env ]
 
-    -- (1) Ei >= E_i
+    -- Ei >= E_i
     let c1 = [ [var1 "Emax"] `geq` [var1 $ "E_" ++ show i] | a@(i, _) <- as ]
 
-    -- (2) E_i >= SUM (D_ij * X_ij)
+    -- E_i >= SUM (D_ij * X_ij)
     let c2 = [ [ var1 $ "E_" ++ show i ] `geq` (sumdx a) | a@(i, _) <- as ]
 
-    -- (3) E_i >= E_k + SUM (D_ij * X_ij)
+    -- E_i >= E_k + SUM (D_ij * X_ij)
     let c3 = [ [ var1 $ "E_" ++ show i]
                 `geq`
                 ((var1 $ "E_" ++ show k) : sumdx ai)
                 | ai@(i, _) <- as
                 , ak@(k, _) <- deps ai r ]
 
-    -- (4) SUM X_ij = 1
+    -- SUM X_ij = 1
     let c4 = [ [var1 $ "X_" ++ show i ++ '_' : j | (j, _) <- validStations a r env]
                 `eql` [constant 1] | a@(i, _) <- as ]
 
@@ -49,7 +49,7 @@ writeSchedule' fName r e = do
                                                     (validStations ak r env)
                    ]
 
-    -- (5) E_i >= E_k + SUM (D_ij * X_ij) - M (1 - O_ik) - M Y_ik
+    -- E_i >= E_k + SUM (D_ij * X_ij) - M (1 - O_ik) - M Y_ik
     let c5 = [ [ var1 $ "E_" ++ show i ]
                `geq`
                 ( sumdx ai ++
@@ -65,7 +65,7 @@ writeSchedule' fName r e = do
                     (validStations ak r env) == [] 
                 ]
 
-    -- (6) E_k >= E_i + SUM (D_kj * X_kj) - M (1 - O_ik) - M (1 - Y_ik)
+    -- E_k >= E_i + SUM (D_kj * X_kj) - M (1 - O_ik) - M (1 - Y_ik)
     let c6 = [ [ var1 $ "E_" ++ show k ]
                 `geq`
                 ( sumdx ak ++
@@ -82,13 +82,13 @@ writeSchedule' fName r e = do
                     (validStations ak r env) == [] 
                 ]
 
-    -- (7) bin X_ij
+    -- bin X_ij
     let c7 = BinC
             [ (1, "X_" ++ show i ++ '_' : j) | a@(i, _) <- as
                                              , (j, _) <- validStations a r env
                                              ]
 
-    -- (8) bin Y_ik
+    -- bin Y_ik
     let c8 = BinC
             [ (1, "Y_" ++ show i ++ ('_' : show k)) | ai@(i, _) <- as
                                                     , ak@(k, _) <- as
@@ -97,7 +97,7 @@ writeSchedule' fName r e = do
                                                         (validStations ai r env)
                                                         (validStations ak r env) == [] ]
 
-    -- (9) bin O_ik
+    -- bin O_ik
     let c9 = BinC
             [ (1, "O_" ++ show i ++ ('_' : show k)) | ai@(i, _) <- as
                                                     , ak@(k, _) <- as
