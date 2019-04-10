@@ -1,3 +1,7 @@
+{-|
+This module assists with drawing recipes in graph form.
+-}
+
 module Recipe.Display
     ( toDot       
     ) where

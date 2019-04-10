@@ -1,3 +1,8 @@
+{-|
+This module uses the alternative MILP
+model to generate LPSolve files.
+-}
+
 module Recipe.Scheduler.MILP2 where
 
 import Recipe.Recipe
@@ -7,6 +12,9 @@ import MILP.Core
 import Algebra.Graph
 import Data.Maybe (catMaybes)
 
+-- |Generate the LPSolve alternative model for scheduling the
+-- given recipe in the given environment and write
+-- it to a .lp file with the given name.
 writeSchedule :: String -> Recipe -> Env -> IO ()
 writeSchedule fName r e = do
     let fPath = fName ++ ".lp"

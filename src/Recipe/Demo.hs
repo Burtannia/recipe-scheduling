@@ -1,3 +1,7 @@
+{-|
+This module contains various examples.
+-}
+
 module Recipe.Demo where
 
 import Recipe.Recipe
@@ -17,13 +21,6 @@ cupOfTea = mkRecipe
     $ mix milk
     $ discardFirst
     $ separate "teabag" "tea"
-    $ waitFor (minutes 5)
-    $ mix teabag
-    $ heatTo 100 water
-
-cupOfTeaOld :: Recipe
-cupOfTeaOld = mkRecipe
-    $ mix milk
     $ waitFor (minutes 5)
     $ mix teabag
     $ heatTo 100 water
@@ -222,11 +219,11 @@ testResults = flip map tests $
     where
         tests = [(r, h) | r <- testRecipes, h <- heuristics]
     
-milpres :: Float
-milpres = sum [449, 2413, 5828]
+-- milpres :: Float
+-- milpres = sum [449, 2413, 5828]
 
-rs = map (\(h, x) -> (h, (x - milpres) / 3)) $
-    flip map rs' $
-        foldr (\(_, h, t) (_, n) -> (h, n + t)) ("", 0)
-rs' = groupBy (\(_,x,_) (_,x',_) -> x == x')
-        $ sortBy (\(_,x,_) (_,x',_) -> compare x x') testResults
+-- rs = map (\(h, x) -> (h, (x - milpres) / 3)) $
+--     flip map rs' $
+--         foldr (\(_, h, t) (_, n) -> (h, n + t)) ("", 0)
+-- rs' = groupBy (\(_,x,_) (_,x',_) -> x == x')
+--         $ sortBy (\(_,x,_) (_,x',_) -> compare x x') testResults
