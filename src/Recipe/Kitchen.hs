@@ -24,11 +24,11 @@ import Data.Ord (comparing)
 -- | Represents a station (such as an oven)
 -- within the environment.
 data Station = Station
-    { stName :: String -- | Unique name
-    , stFunc :: Action -> [Action] -> Maybe Time -- | Given an action and its dependencies returns the time
+    { stName :: String -- ^ Unique name
+    , stFunc :: Action -> [Action] -> Maybe Time -- ^ Given an action and its dependencies returns the time
                                                     -- take for the station to perform that action.
                                                     -- Returns Nothing if the station cannot perform the given action.
-    , stCapacity :: Int -- | Number of concurrent actions the station can perform.
+    , stCapacity :: Int -- ^ Number of concurrent actions the station can perform.
     }
 
 instance Eq Station where
